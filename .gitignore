@@ -1,5 +1,9 @@
-project2/
 .venv/
 __pycache__/
 *.pyc
 *.db
+project2/.venv/
+project2/**/__pycache__/
+project2/**/*.pyc
+project2/**/*.db
+project2/database.pyc
