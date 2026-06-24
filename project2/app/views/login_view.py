@@ -26,59 +26,45 @@ class LoginView(ttk.Frame):
         backdrop.rowconfigure(1, weight=0)
         backdrop.rowconfigure(2, weight=1)
 
-        card = ttk.Frame(backdrop, style=STYLES["login_card"], padding=(36, 34))
-        card.grid(row=1, column=1, sticky="nsew")
-        card.columnconfigure(0, weight=1)
+        shell = ttk.Frame(backdrop, style=STYLES["login_card"], padding=(36, 38))
+        shell.grid(row=1, column=1, sticky="nsew")
+        shell.columnconfigure(0, weight=1)
 
-        title = ttk.Label(
-            card,
-            text="Sistem Absensi",
-            style=STYLES["login_title"],
-        )
-        title.grid(row=0, column=0, pady=(2, 6), sticky="w")
+        header = ttk.Frame(shell, style=STYLES["login_card"])
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(0, weight=1)
 
-        subtitle = ttk.Label(
-            card,
-            text="Masuk untuk mengelola absensi",
-            style=STYLES["login_subtitle"],
-        )
-        subtitle.grid(row=1, column=0, pady=(0, 24), sticky="w")
+        ttk.Label(header, text="Sistem Absensi", style=STYLES["login_title"]).grid(row=0, column=0, sticky="w")
 
-        form = ttk.Frame(card, style=STYLES["login_card"])
-        form.grid(row=2, column=0, padx=36, sticky="nsew")
+        divider = ttk.Separator(shell, orient="horizontal")
+        divider.grid(row=1, column=0, sticky="ew", pady=(18, 22))
+
+        form = ttk.Frame(shell, style=STYLES["login_card"])
+        form.grid(row=2, column=0, sticky="nsew")
         form.columnconfigure(0, weight=1)
 
-        ttk.Label(form, text="Username", style=STYLES["form_label"]).grid(row=0, column=0, sticky="w", pady=(0, 7))
         self.username_var = tk.StringVar()
-        self.username_entry = ttk.Entry(form, textvariable=self.username_var, style=STYLES["form_entry"])
-        self.username_entry.grid(row=1, column=0, sticky="ew", pady=(0, 16), ipady=5)
-
-        ttk.Label(form, text="Password", style=STYLES["form_label"]).grid(row=2, column=0, sticky="w", pady=(0, 7))
         self.password_var = tk.StringVar()
-        self.password_entry = ttk.Entry(form, textvariable=self.password_var, show="*", style=STYLES["form_entry"])
-        self.password_entry.grid(row=3, column=0, sticky="ew", pady=(0, 22), ipady=5)
+        self.message_var = tk.StringVar()
+
+        self.username_entry = self._add_field(form, 0, "Username", self.username_var)
+        self.password_entry = self._add_field(form, 2, "Password", self.password_var, show="*")
 
         self.login_button = ttk.Button(form, text="Masuk", command=self._submit, style=STYLES["button_primary"])
-        self.login_button.grid(row=4, column=0, sticky="ew")
+        self.login_button.grid(row=4, column=0, sticky="ew", pady=(10, 0))
 
-        hint = ttk.Label(
-            card,
-            text="Default: dosen1 / 123456 atau mahasiswa1 / 123456",
-            style=STYLES["login_hint"],
-        )
-        hint.grid(row=5, column=0, pady=(28, 0), sticky="w")
-
-        self.message_var = tk.StringVar()
-        message = ttk.Label(
-            card,
-            textvariable=self.message_var,
-            style=STYLES["login_message"],
-        )
-        message.grid(row=6, column=0, pady=(12, 0), sticky="w")
+        self.message_label = ttk.Label(form, textvariable=self.message_var, style=STYLES["login_message"], wraplength=360, justify="left")
+        self.message_label.grid(row=5, column=0, sticky="w", pady=(16, 0))
 
         self.username_entry.focus_set()
         self.username_entry.bind("<Return>", self._focus_password)
         self.password_entry.bind("<Return>", self._submit_event)
+
+    def _add_field(self, parent, row: int, label: str, variable: tk.StringVar, show: str | None = None) -> ttk.Entry:
+        ttk.Label(parent, text=label, style=STYLES["form_label"]).grid(row=row, column=0, sticky="w", pady=(0, 7))
+        entry = ttk.Entry(parent, textvariable=variable, style=STYLES["form_entry"], show=show or "")
+        entry.grid(row=row + 1, column=0, sticky="ew")
+        return entry
 
     def _focus_password(self, event=None) -> None:
         self.password_entry.focus_set()

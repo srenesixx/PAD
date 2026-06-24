@@ -1,13 +1,26 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from app.database import get_connection
+from app.database import fetch_all, fetch_one, get_connection
 
 
 class AttendanceModel:
     """Business logic for attendance records."""
+
+    SELECT_TODAY_RECORD = """
+        SELECT *
+        FROM absensi
+        WHERE user_id = ? AND tanggal = ?
+        LIMIT 1
+    """
+    SELECT_CURRENT_ATTENDANCE = """
+        SELECT id, jam_masuk, jam_pulang
+        FROM absensi
+        WHERE user_id = ? AND tanggal = ?
+        LIMIT 1
+    """
 
     def _today(self) -> str:
         return date.today().isoformat()
@@ -15,20 +28,11 @@ class AttendanceModel:
     def _now_time(self) -> str:
         return datetime.now().strftime("%H:%M:%S")
 
-    def get_today_record(self, user_id: int) -> Optional[Dict[str, Any]]:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT *
-            FROM absensi
-            WHERE user_id = ? AND tanggal = ?
-            LIMIT 1
-            """,
-            (user_id, self._today()),
-        )
-        row = cursor.fetchone()
-        conn.close()
+    def _get_current_attendance(self, user_id: int, today: str):
+        return fetch_one(self.SELECT_CURRENT_ATTENDANCE, (user_id, today))
+
+    def get_today_record(self, user_id: int) -> dict[str, Any] | None:
+        row = fetch_one(self.SELECT_TODAY_RECORD, (user_id, self._today()))
         return dict(row) if row else None
 
     def mark_check_in(self, user_id: int, status: str = "hadir", keterangan: str = "") -> tuple[bool, str]:
@@ -36,16 +40,7 @@ class AttendanceModel:
         today = self._today()
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id, jam_masuk, jam_pulang
-            FROM absensi
-            WHERE user_id = ? AND tanggal = ?
-            LIMIT 1
-            """,
-            (user_id, today),
-        )
-        row = cursor.fetchone()
+        row = self._get_current_attendance(user_id, today)
 
         if row and row["jam_masuk"]:
             conn.close()
@@ -78,16 +73,7 @@ class AttendanceModel:
         today = self._today()
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id, jam_masuk, jam_pulang
-            FROM absensi
-            WHERE user_id = ? AND tanggal = ?
-            LIMIT 1
-            """,
-            (user_id, today),
-        )
-        row = cursor.fetchone()
+        row = self._get_current_attendance(user_id, today)
 
         if row is None or not row["jam_masuk"]:
             conn.close()
@@ -109,10 +95,7 @@ class AttendanceModel:
         conn.close()
         return True, f"Absensi pulang berhasil pada {now}."
 
-    def get_records(self, user_id: Optional[int] = None, limit: int = 100) -> List[Dict[str, Any]]:
-        conn = get_connection()
-        cursor = conn.cursor()
-
+    def get_records(self, user_id: int | None = None, limit: int = 100) -> list[dict[str, Any]]:
         params: list[Any] = []
         user_clause = ""
         if user_id is not None:
@@ -120,7 +103,7 @@ class AttendanceModel:
             params.append(user_id)
 
         params.append(limit)
-        cursor.execute(
+        rows = fetch_all(
             f"""
             SELECT
                 a.id,
@@ -142,11 +125,9 @@ class AttendanceModel:
             """,
             params,
         )
-        rows = cursor.fetchall()
-        conn.close()
         return [dict(row) for row in rows]
 
-    def get_summary(self, user_id: int, role: str) -> Dict[str, Any]:
+    def get_summary(self, user_id: int, role: str) -> dict[str, Any]:
         conn = get_connection()
         cursor = conn.cursor()
         today = self._today()
@@ -212,4 +193,3 @@ class AttendanceModel:
             "label_3": "Pulang",
             "value_3": row["jam_pulang"] or "-",
         }
-

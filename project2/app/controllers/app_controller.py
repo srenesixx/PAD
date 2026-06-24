@@ -21,9 +21,9 @@ class AppController:
         self.show_login()
 
     def _configure_root(self) -> None:
-        self.root.title("Sistem Absensi")
-        self.root.geometry("1280x760")
-        self.root.minsize(1100, 680)
+        self.root.title("Sistem Absensi Terpadu")
+        self.root.geometry("1320x800")
+        self.root.minsize(1180, 720)
         apply_theme(self.root)
 
     def clear_current_view(self) -> None:
@@ -82,6 +82,7 @@ class AppController:
         success, message = self.attendance_controller.check_out(self.current_user)
         if success:
             self.refresh_dashboard()
+            self.current_view.clear_form()
             self.current_view.set_message(message)
             messagebox.showinfo("Berhasil", message)
         else:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import Any, Iterable
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +15,35 @@ def get_connection() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def fetch_one(query: str, params: Iterable[Any] = ()) -> sqlite3.Row | None:
+    """Run a read-only query and return the first row, if any."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, tuple(params))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+
+def fetch_all(query: str, params: Iterable[Any] = ()) -> list[sqlite3.Row]:
+    """Run a read-only query and return all rows."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, tuple(params))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def execute(query: str, params: Iterable[Any] = ()) -> None:
+    """Run a write query inside a short-lived transaction."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, tuple(params))
+    conn.commit()
+    conn.close()
 
 
 def init_database() -> None:
@@ -82,4 +112,3 @@ def ensure_database() -> None:
     """Initialize schema and seed defaults."""
     init_database()
     insert_default_data()
-

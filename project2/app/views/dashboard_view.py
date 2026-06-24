@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 import tkinter as tk
 from tkinter import ttk
 
@@ -7,6 +8,18 @@ from app.theme import COLORS, STYLES
 
 
 class DashboardView(ttk.Frame):
+    STATUS_OPTIONS = ("hadir", "izin", "sakit", "alpha")
+    COLUMNS = ("nama", "tanggal", "masuk", "pulang", "status", "keterangan")
+    HEADINGS = {
+        "nama": "Nama",
+        "tanggal": "Tanggal",
+        "masuk": "Masuk",
+        "pulang": "Pulang",
+        "status": "Status",
+        "keterangan": "Keterangan",
+    }
+    WIDTHS = {"nama": 180, "tanggal": 110, "masuk": 90, "pulang": 90, "status": 90, "keterangan": 260}
+
     def __init__(
         self,
         master,
@@ -30,64 +43,78 @@ class DashboardView(ttk.Frame):
         self._build()
 
     def _build(self) -> None:
-        self.pack_propagate(False)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
 
-        header = ttk.Frame(self, style=STYLES["header"], padding=(28, 20))
+        self._build_header()
+        self._build_content()
+
+    def _build_header(self) -> None:
+        header = ttk.Frame(self, style=STYLES["header"], padding=(28, 22))
         header.grid(row=0, column=0, sticky="ew")
         header.columnconfigure(0, weight=1)
+        header.columnconfigure(1, weight=0)
 
-        title = ttk.Label(
-            header,
+        title_box = ttk.Frame(header, style=STYLES["header"])
+        title_box.grid(row=0, column=0, sticky="w")
+        title_box.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            title_box,
             text=f"Selamat datang, {self.user.nama}",
             style=STYLES["dashboard_title"],
-        )
-        title.grid(row=0, column=0, sticky="w")
+        ).grid(row=0, column=0, sticky="w")
 
-        meta = ttk.Label(
-            header,
-            text=f"{self.user.role.title()}  |  @{self.user.username}",
-            style=STYLES["meta"],
-        )
-        meta.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        subtitle_text = f"@{self.user.username}  |  {self.user.role.title()}  |  {date.today().strftime('%d/%m/%Y')}"
+        ttk.Label(title_box, text=subtitle_text, style=STYLES["dashboard_subtitle"]).grid(row=1, column=0, sticky="w", pady=(4, 0))
+        ttk.Label(title_box, text=self.user.role.title(), style=STYLES["dashboard_chip"]).grid(row=2, column=0, sticky="w", pady=(12, 0))
 
-        logout_button = ttk.Button(header, text="Logout", command=self.on_logout, style=STYLES["button_secondary"])
-        logout_button.grid(row=0, column=1, rowspan=2, sticky="e")
+        action_box = ttk.Frame(header, style=STYLES["header"])
+        action_box.grid(row=0, column=1, sticky="e")
+        ttk.Button(action_box, text="Refresh", command=self.on_refresh, style=STYLES["button_secondary"]).grid(row=0, column=0, padx=(0, 10))
+        ttk.Button(action_box, text="Logout", command=self.on_logout, style=STYLES["button_secondary"]).grid(row=0, column=1)
 
+    def _build_content(self) -> None:
         content = ttk.Frame(self, style=STYLES["page"], padding=(24, 24))
         content.grid(row=1, column=0, sticky="nsew")
-        content.columnconfigure(0, weight=0, minsize=300)
+        content.columnconfigure(0, weight=0, minsize=340)
         content.columnconfigure(1, weight=1)
         content.rowconfigure(1, weight=1)
 
-        self.side_panel = ttk.Frame(content, style=STYLES["panel_dark"], padding=(20, 20), width=330)
-        self.side_panel.grid(row=0, column=0, rowspan=2, sticky="nsw", padx=(0, 18))
-        self.side_panel.grid_propagate(False)
-        self.side_panel.columnconfigure(0, weight=1)
+        self._build_actions_panel(content)
+        self._build_summary_panel(content)
+        self._build_records_panel(content)
 
-        side_title = ttk.Label(
-            self.side_panel,
-            text="Aksi Absensi",
-            style=STYLES["section_title"],
-        )
-        side_title.grid(row=0, column=0, sticky="w")
+    def _build_actions_panel(self, parent) -> None:
+        panel = ttk.Frame(parent, style=STYLES["panel_dark"], padding=(20, 20), width=340)
+        panel.grid(row=0, column=0, rowspan=2, sticky="nsw", padx=(0, 18))
+        panel.columnconfigure(0, weight=1)
+        panel.grid_propagate(False)
 
-        ttk.Label(self.side_panel, text="Status", style=STYLES["panel_label"]).grid(row=1, column=0, sticky="w", pady=(18, 6))
+        ttk.Label(panel, text="Aksi Absensi", style=STYLES["section_title"]).grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            panel,
+            text="Pilih status, tambahkan keterangan bila perlu, lalu simpan absensi hari ini.",
+            style=STYLES["panel_label"],
+            wraplength=290,
+            justify="left",
+        ).grid(row=1, column=0, sticky="w", pady=(10, 18))
+
+        ttk.Label(panel, text="Status", style=STYLES["panel_label"]).grid(row=2, column=0, sticky="w", pady=(0, 6))
         self.status_var = tk.StringVar(value="hadir")
         self.status_combo = ttk.Combobox(
-            self.side_panel,
+            panel,
             textvariable=self.status_var,
-            values=["hadir", "izin", "sakit", "alpha"],
+            values=list(self.STATUS_OPTIONS),
             state="readonly",
             style=STYLES["form_combo"],
         )
-        self.status_combo.grid(row=2, column=0, sticky="ew")
+        self.status_combo.grid(row=3, column=0, sticky="ew")
 
-        ttk.Label(self.side_panel, text="Keterangan", style=STYLES["panel_label"]).grid(row=3, column=0, sticky="w", pady=(18, 6))
+        ttk.Label(panel, text="Keterangan", style=STYLES["panel_label"]).grid(row=4, column=0, sticky="w", pady=(18, 6))
         self.keterangan_text = tk.Text(
-            self.side_panel,
-            height=5,
+            panel,
+            height=7,
             width=30,
             wrap="word",
             bg=COLORS["surface_bg"],
@@ -100,33 +127,36 @@ class DashboardView(ttk.Frame):
             padx=10,
             pady=10,
         )
-        self.keterangan_text.grid(row=4, column=0, sticky="ew")
+        self.keterangan_text.grid(row=5, column=0, sticky="ew")
 
-        button_row = ttk.Frame(self.side_panel, style=STYLES["panel_dark"])
-        button_row.grid(row=5, column=0, sticky="ew", pady=(16, 0))
+        button_row = ttk.Frame(panel, style=STYLES["panel_dark"])
+        button_row.grid(row=6, column=0, sticky="ew", pady=(16, 0))
         button_row.columnconfigure(0, weight=1)
         button_row.columnconfigure(1, weight=1)
 
-        checkin_button = ttk.Button(button_row, text="Check In", command=self._check_in, style=STYLES["button_primary"])
-        checkin_button.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        ttk.Button(button_row, text="Check In", command=self._check_in, style=STYLES["button_primary"]).grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        ttk.Button(button_row, text="Check Out", command=self._check_out, style=STYLES["button_secondary"]).grid(row=0, column=1, sticky="ew", padx=(6, 0))
 
-        checkout_button = ttk.Button(button_row, text="Check Out", command=self._check_out, style=STYLES["button_secondary"])
-        checkout_button.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        action_row = ttk.Frame(panel, style=STYLES["panel_dark"])
+        action_row.grid(row=7, column=0, sticky="ew", pady=(10, 0))
+        action_row.columnconfigure(0, weight=1)
+        action_row.columnconfigure(1, weight=1)
 
-        refresh_button = ttk.Button(self.side_panel, text="Refresh", command=self.on_refresh, style=STYLES["button_secondary"])
-        refresh_button.grid(row=6, column=0, sticky="ew", pady=(14, 0))
+        ttk.Button(action_row, text="Bersihkan", command=self.clear_form, style=STYLES["button_ghost"]).grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        ttk.Button(action_row, text="Muat Ulang", command=self.on_refresh, style=STYLES["button_secondary"]).grid(row=0, column=1, sticky="ew", padx=(6, 0))
 
         self.message_var = tk.StringVar()
         self.message_label = ttk.Label(
-            self.side_panel,
+            panel,
             textvariable=self.message_var,
             style=STYLES["panel_message"],
-            wraplength=270,
+            wraplength=300,
             justify="left",
         )
-        self.message_label.grid(row=7, column=0, sticky="w", pady=(16, 0))
+        self.message_label.grid(row=8, column=0, sticky="w", pady=(18, 0))
 
-        self.summary_frame = ttk.Frame(content, style=STYLES["page"])
+    def _build_summary_panel(self, parent) -> None:
+        self.summary_frame = ttk.Frame(parent, style=STYLES["page"])
         self.summary_frame.grid(row=0, column=1, sticky="ew")
         self.summary_frame.columnconfigure(0, weight=1)
         self.summary_frame.columnconfigure(1, weight=1)
@@ -137,37 +167,30 @@ class DashboardView(ttk.Frame):
         self.card_3 = self._create_card(self.summary_frame, 2)
         self._render_summary(self.summary)
 
-        table_frame = ttk.Frame(content, style=STYLES["surface"], padding=(16, 16))
+    def _build_records_panel(self, parent) -> None:
+        table_frame = ttk.Frame(parent, style=STYLES["surface"], padding=(16, 16))
         table_frame.grid(row=1, column=1, sticky="nsew", pady=(18, 0))
         table_frame.columnconfigure(0, weight=1)
-        table_frame.rowconfigure(1, weight=1)
+        table_frame.rowconfigure(2, weight=1)
 
-        table_title = ttk.Label(
-            table_frame,
-            text="Riwayat Absensi",
-            style=STYLES["table_title"],
-        )
-        table_title.grid(row=0, column=0, sticky="w", pady=(0, 10))
+        ttk.Label(table_frame, text="Riwayat Absensi", style=STYLES["table_title"]).grid(row=0, column=0, sticky="w")
+        self.table_hint_var = tk.StringVar()
+        ttk.Label(table_frame, textvariable=self.table_hint_var, style=STYLES["helper"]).grid(row=1, column=0, sticky="w", pady=(4, 10))
 
-        columns = ("nama", "tanggal", "masuk", "pulang", "status", "keterangan")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=14)
-        headings = {
-            "nama": "Nama",
-            "tanggal": "Tanggal",
-            "masuk": "Masuk",
-            "pulang": "Pulang",
-            "status": "Status",
-            "keterangan": "Keterangan",
-        }
-        widths = {"nama": 170, "tanggal": 110, "masuk": 90, "pulang": 90, "status": 90, "keterangan": 240}
-        for column in columns:
-            self.tree.heading(column, text=headings[column])
-            self.tree.column(column, width=widths[column], anchor="w")
+        tree_container = ttk.Frame(table_frame, style=STYLES["surface"])
+        tree_container.grid(row=2, column=0, sticky="nsew")
+        tree_container.columnconfigure(0, weight=1)
+        tree_container.rowconfigure(0, weight=1)
 
-        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree = ttk.Treeview(tree_container, columns=self.COLUMNS, show="headings", height=14)
+        for column in self.COLUMNS:
+            self.tree.heading(column, text=self.HEADINGS[column])
+            self.tree.column(column, width=self.WIDTHS[column], anchor="w")
+
+        scrollbar = ttk.Scrollbar(tree_container, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
-        self.tree.grid(row=1, column=0, sticky="nsew")
-        scrollbar.grid(row=1, column=1, sticky="ns")
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
 
         self._render_records(self.records)
 
@@ -178,9 +201,12 @@ class DashboardView(ttk.Frame):
         label = ttk.Label(card, text="", style=STYLES["card_label"])
         label.grid(row=0, column=0, sticky="w")
         value = ttk.Label(card, text="", style=STYLES["card_value"])
-        value.grid(row=1, column=0, sticky="w", pady=(5, 0))
+        value.grid(row=1, column=0, sticky="w", pady=(6, 0))
+        note = ttk.Label(card, text="Ringkasan hari ini", style=STYLES["card_note"])
+        note.grid(row=2, column=0, sticky="w", pady=(4, 0))
         setattr(self, f"card_{index + 1}_label", label)
         setattr(self, f"card_{index + 1}_value", value)
+        setattr(self, f"card_{index + 1}_note", note)
         return card
 
     def _render_summary(self, summary: dict) -> None:
@@ -195,6 +221,11 @@ class DashboardView(ttk.Frame):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        if not records:
+            self.table_hint_var.set("Belum ada riwayat absensi untuk ditampilkan.")
+            return
+
+        self.table_hint_var.set(f"Menampilkan {len(records)} data terbaru.")
         for record in records:
             self.tree.insert(
                 "",
@@ -215,14 +246,15 @@ class DashboardView(ttk.Frame):
         self._render_summary(summary)
         self._render_records(records)
 
-    def set_message(self, text: str, color: str = "#38bdf8") -> None:
+    def set_message(self, text: str, color: str = COLORS["info"]) -> None:
         self.message_var.set(text)
         self.message_label.config(style=STYLES["panel_message"], foreground=color)
 
     def clear_form(self) -> None:
         self.status_var.set("hadir")
         self.keterangan_text.delete("1.0", "end")
-        self.message_label.config(style=STYLES["panel_message"])
+        self.message_var.set("")
+        self.message_label.config(style=STYLES["panel_message"], foreground=COLORS["info"])
 
     def _check_in(self) -> None:
         self.on_check_in(self.status_var.get(), self.keterangan_text.get("1.0", "end").strip())

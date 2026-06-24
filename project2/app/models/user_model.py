@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from app.database import get_connection
+from app.database import fetch_one
 
 
 @dataclass(frozen=True)
@@ -17,24 +16,21 @@ class User:
 class UserModel:
     """Access user records stored in SQLite."""
 
-    def authenticate(self, username: str, password: str) -> Optional[User]:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id, username, role, nama
-            FROM users
-            WHERE username = ? AND password = ?
-            LIMIT 1
-            """,
-            (username.strip(), password),
-        )
-        row = cursor.fetchone()
-        conn.close()
+    SELECT_USER = """
+        SELECT id, username, role, nama
+        FROM users
+        WHERE username = ? AND password = ?
+        LIMIT 1
+    """
+    SELECT_BY_ID = """
+        SELECT id, username, role, nama
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    """
 
-        if row is None:
-            return None
-
+    @staticmethod
+    def _to_user(row) -> User:
         return User(
             id=row["id"],
             username=row["username"],
@@ -42,28 +38,10 @@ class UserModel:
             nama=row["nama"],
         )
 
-    def get_by_id(self, user_id: int) -> Optional[User]:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id, username, role, nama
-            FROM users
-            WHERE id = ?
-            LIMIT 1
-            """,
-            (user_id,),
-        )
-        row = cursor.fetchone()
-        conn.close()
+    def authenticate(self, username: str, password: str) -> User | None:
+        row = fetch_one(self.SELECT_USER, (username.strip(), password))
+        return self._to_user(row) if row is not None else None
 
-        if row is None:
-            return None
-
-        return User(
-            id=row["id"],
-            username=row["username"],
-            role=row["role"],
-            nama=row["nama"],
-        )
-
+    def get_by_id(self, user_id: int) -> User | None:
+        row = fetch_one(self.SELECT_BY_ID, (user_id,))
+        return self._to_user(row) if row is not None else None
